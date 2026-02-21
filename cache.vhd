@@ -48,6 +48,8 @@ signal s_offset: std_logic_vector(1 downto 0);
 
 signal byte_cnt: integer range 0 to 15;
 
+signal dirty_tag  : std_logic_vector(22 downto 0);
+signal dirty_index: std_logic_vector(4 downto 0);
 
 begin
 -- make circuits here
@@ -97,6 +99,9 @@ elsif rising_edge(clock) then
 			--miss
 			if curr_line.valid = '1' AND curr_line.dirty = '1' then
 				-- write ejected block to MM
+				dirty_tag   <= curr_line.tag;
+				dirty_index <= s_index;
+				byte_cnt    <= 0;
 				state <= R_WB;
 			else
 				-- read MM
@@ -128,6 +133,9 @@ elsif rising_edge(clock) then
 			--miss
 			if curr_line.valid = '1' AND curr_line.dirty = '1' then
 				-- write ejected block to MM
+				dirty_tag   <= curr_line.tag;
+				dirty_index <= s_index;
+				byte_cnt    <= 0;
 				state <= W_WB;
 			else
 				byte_cnt <= 0;
@@ -136,6 +144,40 @@ elsif rising_edge(clock) then
 				-- read MM
 				state <= W_FETCH;
 			end if;
+		end if;
+	elsif state = R_WB or state = W_WB then
+		-- Write back dirty line to MM
+		if m_waitrequest = '0' then
+			curr_line := cache_block(to_integer(unsigned(dirty_index)));
+
+			m_write <= '1';
+			m_read <= '0';
+			m_addr <= to_integer(unsigned(dirty_tag & dirty_index & std_logic_vector(to_unsigned(byte_cnt, 4))));
+			m_writedata <= curr_line.data(byte_cnt * 8 + 7 downto byte_cnt * 8);
+
+			if byte_cnt = 15 then
+				-- finished
+				curr_line.dirty := '0';
+				cache_block(to_integer(unsigned(dirty_index))) <= curr_line;
+
+				-- start fetching the *new* block
+				byte_cnt <= 0;
+				m_write  <= '0';
+				m_read   <= '1';
+				m_addr   <= to_integer(unsigned(s_tag & s_index & "0000"));
+
+				if state = W_WB then
+					state <= W_FETCH;
+				else
+					state <= R_FETCH;
+				end if;
+			else
+				byte_cnt <= byte_cnt + 1;
+			end if;
+		else
+			-- keep asserting write while stalled
+			m_write <= '1';
+			m_read  <= '0';	
 		end if;
 	elsif state = W_FETCH OR state = R_FETCH then
 
