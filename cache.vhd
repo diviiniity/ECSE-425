@@ -66,7 +66,8 @@ if reset = '1' then
 	end loop;
 	m_read         <= '0';   
    m_write        <= '0';   
-   s_waitrequest  <= '1';   
+   s_waitrequest  <= '1'; 
+	m_addr <= 0;
 	state <= IDLE;
 elsif rising_edge(clock) then
 	if state = IDLE then
@@ -108,7 +109,7 @@ elsif rising_edge(clock) then
 				state <= R_WB;
 			else
 				-- read MM
-				byte_cnt <= 0;
+				byte_cnt <= 0;	
 				m_read <= '1';
 				m_addr <= to_integer(unsigned(s_tag & s_index & "0000"));	
 				state <= R_FETCH;

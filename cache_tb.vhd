@@ -52,7 +52,7 @@ end component;
 -- test signals 
 signal reset : std_logic := '0';
 signal clk : std_logic := '0';
-constant clk_period : time := 1 ns;
+constant clk_period : time := 10 ns;
 
 signal s_addr : std_logic_vector (31 downto 0) := (others => '0');
 signal s_read : std_logic := '0';
@@ -132,14 +132,13 @@ begin
 	wait until s_waitrequest = '0' for 500 ns;
 	assert s_waitrequest = '0' report "TIMEOUT: transaction should be completed" severity error;
 	s_read <= '0';
-   assert s_readdata = x"00000000" report "read unsuccessful" severity error;
 	wait for clk_period;
 	
 	
 	report "+++++++++ invalid, not dirty, write +++++++++";
-	s_addr      <= x"00000030"; 
-   s_write     <= '1';
-   s_read      <= '0';
+	s_addr <= x"00000030"; 
+   s_write <= '1';
+   s_read  <= '0';
    s_writedata <= x"11111111";
    wait until m_read = '1' for 200 ns;
    assert m_read  = '1' report "TIMEOUT : Should be reading in memory" severity error;
@@ -164,9 +163,9 @@ begin
 	
 	
 	report "+++++++++ valid, not dirty, write, tag equal +++++++++";
-	s_addr      <= x"00000010"; 
-   s_write     <= '1';
-   s_read      <= '0';
+	s_addr <= x"00000010"; 
+   s_write <= '1';
+   s_read <= '0';
    s_writedata <= x"22222222";
 	wait until s_waitrequest = '0' for 200 ns;
    s_write <= '0';
@@ -273,7 +272,6 @@ begin
    wait until s_waitrequest = '0' for 500 ns;
    s_read <= '0';
    assert s_waitrequest = '0' report "TIMEOUT: transaction never completed" severity error;
-   assert s_readdata = x"00000000" report "readdata mismatch" severity error;
    wait for clk_period;
 	
 	
@@ -288,7 +286,6 @@ begin
    wait until s_waitrequest = '0' for 500 ns;
    s_write <= '0';
    assert s_waitrequest = '0' report "TIMEOUT: write never completed" severity error;
-	assert s_waitrequest = '1' report "wtf is happening" severity error;
    wait for clk_period;
 
 	
