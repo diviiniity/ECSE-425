@@ -19,9 +19,9 @@ port(
 	s_waitrequest : out std_logic; 
     
 	m_addr : out integer range 0 to ram_size-1;
-	m_read : out std_logic := '0';
+	m_read : out std_logic;
 	m_readdata : in std_logic_vector (7 downto 0);
-	m_write : out std_logic := '0';
+	m_write : out std_logic;
 	m_writedata : out std_logic_vector (7 downto 0);
 	m_waitrequest : in std_logic
 );
@@ -64,9 +64,6 @@ if reset = '1' then
 	for i in 0 to 31 loop
     		cache_block(i).valid <= '0';
 	end loop;
-	m_read         <= '0';   
-   m_write        <= '0';   
-   s_waitrequest  <= '1';   
 	state <= IDLE;
 elsif rising_edge(clock) then
 	if state = IDLE then

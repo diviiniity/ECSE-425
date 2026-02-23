@@ -9,7 +9,7 @@ architecture behavior of cache_tb is
 
 component cache is
 generic(
-    ram_size : INTEGER := 32768;
+    ram_size : INTEGER := 32768
 );
 port(
     clock : in std_logic;
@@ -54,11 +54,11 @@ signal reset : std_logic := '0';
 signal clk : std_logic := '0';
 constant clk_period : time := 1 ns;
 
-signal s_addr : std_logic_vector (31 downto 0);
-signal s_read : std_logic;
+signal s_addr : std_logic_vector (31 downto 0) := (others => '0');
+signal s_read : std_logic := '0';
 signal s_readdata : std_logic_vector (31 downto 0);
-signal s_write : std_logic;
-signal s_writedata : std_logic_vector (31 downto 0);
+signal s_write : std_logic := '0';
+signal s_writedata : std_logic_vector (31 downto 0) := (others => '0');
 signal s_waitrequest : std_logic;
 
 signal m_addr : integer range 0 to 2147483647;
@@ -116,6 +116,186 @@ test_process : process
 begin
 
 -- put your tests here
+	reset <= '1';
+	wait for clk_period * 2;
+	reset <= '0';
+	wait for clk_period * 2;
+	
+	
+	report "+++++++++ invalid, not dirty, read +++++++++";
+	s_addr <= x"00000010";
+	s_read <= '1';
+	s_write <= '0';
+	wait until m_read = '1' for 200 ns;
+	assert m_read = '1' report "TIMEOUT : Should be reading in memory" severity error;
+	assert m_write = '0' report "Should not be writing in memory" severity error;
+	wait until s_waitrequest = '0' for 500 ns;
+	assert s_waitrequest = '0' report "TIMEOUT: transaction should be completed" severity error;
+	s_read <= '0';
+   assert s_readdata = x"00000000" report "read unsuccessful" severity error;
+	wait for clk_period;
+	
+	
+	report "+++++++++ invalid, not dirty, write +++++++++";
+	s_addr      <= x"00000030"; 
+   s_write     <= '1';
+   s_read      <= '0';
+   s_writedata <= x"11111111";
+   wait until m_read = '1' for 200 ns;
+   assert m_read  = '1' report "TIMEOUT : Should be reading in memory" severity error;
+   assert m_write = '0' report "Should not be writing in memory" severity error;
+   wait until s_waitrequest = '0' for 500 ns;
+   s_write <= '0';
+   assert s_waitrequest = '0' report "TIMEOUT: transaction should be completed" severity error;
+   wait for clk_period;
+
+	
+	report "+++++++++ valid, not dirty, read +++++++++";
+	s_addr  <= x"00000010"; 
+   s_write <= '0';
+   s_read  <= '1';
+   wait until s_waitrequest = '0' for 200 ns;
+   s_read <= '0';
+   assert s_waitrequest = '0' report "TIMEOUT: hit should be completed" severity error;
+   assert m_read  = '0' report "Should not read into memory" severity error;
+   assert m_write = '0' report "Should not write into memory" severity error;
+   assert s_readdata = x"00000000" report "readdata mismatch on hit" severity error;
+   wait for clk_period;
+	
+	
+	report "+++++++++ valid, not dirty, write, tag equal +++++++++";
+	s_addr      <= x"00000010"; 
+   s_write     <= '1';
+   s_read      <= '0';
+   s_writedata <= x"22222222";
+	wait until s_waitrequest = '0' for 200 ns;
+   s_write <= '0';
+   assert s_waitrequest = '0' report " TIMEOUT:  write hit should completed" severity error;
+   assert m_read  = '0' report "Should not read into memory" severity error;
+   assert m_write = '0' report "Should not write into memory" severity error;
+   wait for clk_period;
+	
+	
+	report "+++++++++ valid, dirty, read, tag equal +++++++++";
+	s_addr  <= x"00000010"; 
+   s_write <= '0';
+   s_read  <= '1';
+   wait until s_waitrequest = '0' for 200 ns;
+   s_read <= '0';
+   assert s_waitrequest = '0' report "TIMEOUT - hit should be completed" severity error;
+   assert m_read  = '0' report "Should not read into memory" severity error;
+   assert m_write = '0' report "Should not write into memory" severity error;
+   assert s_readdata = x"22222222" report "readdata mismatch on dirty hit" severity error;
+   wait for clk_period;
+	
+	
+	report "+++++++++ valid, dirty, write, tag equal +++++++++";
+   s_addr      <= x"00000010"; 
+   s_write     <= '1';
+   s_read      <= '0';
+   s_writedata <= x"33333333";
+   wait until s_waitrequest = '0' for 200 ns;
+   s_write <= '0';
+   assert s_waitrequest = '0' report "TIMEOUT - hit should be completed" severity error;
+   assert m_read  = '0' report "Should not read into memory" severity error;
+   assert m_write = '0' report "Should not write into memory" severity error;
+   wait for clk_period;
+	
+	
+	report "+++++++++ valid, dirty, read, tag not equal +++++++++";
+   s_addr  <= x"00000210"; 
+   s_write <= '0';
+   s_read  <= '1';
+   --writeback
+   wait until m_write = '1' for 200 ns;
+   assert m_write = '1' report "TIMEOUT: Should write into memory" severity error;
+	--read
+   wait until m_read = '1' for 500 ns;
+   assert m_read = '1' report "TIMEOUT: Should read into memory" severity error;
+   wait until s_waitrequest = '0' for 500 ns;
+   s_read <= '0';
+   assert s_waitrequest = '0' report "TIMEOUT: transaction never completed" severity error;
+   assert s_readdata = x"00000000" report "readdata mismatch" severity error;
+   wait for clk_period;
+	
+	
+	report "+++++++++ valid, not dirty, read, tag not equal +++++++++";
+   s_addr  <= x"00000010"; 
+   s_write <= '0';
+   s_read  <= '1';
+   wait until m_read = '1' for 200 ns;
+   assert m_read  = '1' report "TIMEOUT: Should read into memory" severity error;
+   assert m_write = '0' report "Should not write into memory" severity error;
+   wait until s_waitrequest = '0' for 500 ns;
+   s_read <= '0';
+   assert s_waitrequest = '0' report "TIMEOUT: transaction never completed" severity error;
+   wait for clk_period;
+	
+	
+	report "+++++++++ valid, not dirty, write, tag not equal +++++++++";
+   s_addr      <= x"00000210";
+   s_write     <= '1';
+   s_read      <= '0';
+   s_writedata <= x"12345678";
+   wait until m_read = '1' for 200 ns;
+   assert m_read  = '1' report "Should read into memory" severity error;
+   assert m_write = '0' report "Should not write into memory" severity error;
+   wait until s_waitrequest = '0' for 500 ns;
+   s_write <= '0';
+   assert s_waitrequest = '0' report "TIMEOUT: write never completed" severity error;
+   wait for clk_period;
+	
+	
+	report "+++++++++ valid, dirty, write, tag not equal +++++++++";
+   s_addr      <= x"00000010"; 
+   s_write     <= '1';
+   s_read      <= '0';
+   s_writedata <= x"22222222";
+   --writeback
+   wait until m_write = '1' for 200 ns;
+   assert m_write = '1' report "TIMEOUT: Should write into memory" severity error;
+   --fetch
+   wait until m_read = '1' for 500 ns;
+   assert m_read = '1' report "TIMEOUT: Should read into memory" severity error;
+   wait until s_waitrequest = '0' for 500 ns;
+   s_write <= '0';
+   assert s_waitrequest = '0' report "TIMEOUT: write never completed" severity error;
+   wait for clk_period;
+	
+	
+	report "+++++++++ invalid, not dirty, read, tag not equal +++++++++";
+   s_addr  <= x"00000050"; 
+   s_write <= '0';
+   s_read  <= '1';
+   wait until m_read = '1' for 200 ns;
+   assert m_read  = '1' report "TIMEOUT: Should read into memory" severity error;
+   assert m_write = '0' report "Should not write into memory" severity error;
+   wait until s_waitrequest = '0' for 500 ns;
+   s_read <= '0';
+   assert s_waitrequest = '0' report "TIMEOUT: transaction never completed" severity error;
+   assert s_readdata = x"00000000" report "readdata mismatch" severity error;
+   wait for clk_period;
+	
+	
+	report "+++++++++ invalid, not dirty, write, tag not equal +++++++++";
+   s_addr      <= x"00000070";
+   s_write     <= '1';
+   s_read      <= '0';
+   s_writedata <= x"44444444";
+   wait until m_read = '1' for 200 ns;
+   assert m_read  = '1' report "TIMEOUT: Should read into memory" severity error;
+   assert m_write = '0' report "Should not write into memory " severity error;
+   wait until s_waitrequest = '0' for 500 ns;
+   s_write <= '0';
+   assert s_waitrequest = '0' report "TIMEOUT: write never completed" severity error;
+	assert s_waitrequest = '1' report "wtf is happening" severity error;
+   wait for clk_period;
+
+	
+	
+	
+	report "--------- Testbench completed ---------";
+	wait;
 	
 end process;
 	
