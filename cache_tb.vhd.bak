@@ -147,7 +147,6 @@ begin
    s_write <= '0';
    assert s_waitrequest = '0' report "TIMEOUT: transaction should be completed" severity error;
    wait for clk_period;
-	wait until s_waitrequest = '1' for 500 ns;
 
 	
 	report "+++++++++ valid, not dirty, read +++++++++";
@@ -159,8 +158,8 @@ begin
    assert s_waitrequest = '0' report "TIMEOUT: hit should be completed" severity error;
    assert m_read  = '0' report "Should not read into memory" severity error;
    assert m_write = '0' report "Should not write into memory" severity error;
+   assert s_readdata = x"00000000" report "readdata mismatch on hit" severity error;
    wait for clk_period;
-	wait until s_waitrequest = '1' for 500 ns;
 	
 	
 	report "+++++++++ valid, not dirty, write, tag equal +++++++++";
@@ -174,7 +173,6 @@ begin
    assert m_read  = '0' report "Should not read into memory" severity error;
    assert m_write = '0' report "Should not write into memory" severity error;
    wait for clk_period;
-	wait until s_waitrequest = '1' for 500 ns;
 	
 	
 	report "+++++++++ valid, dirty, read, tag equal +++++++++";
@@ -188,7 +186,6 @@ begin
    assert m_write = '0' report "Should not write into memory" severity error;
    assert s_readdata = x"22222222" report "readdata mismatch on dirty hit" severity error;
    wait for clk_period;
-	wait until s_waitrequest = '1' for 500 ns;
 	
 	
 	report "+++++++++ valid, dirty, write, tag equal +++++++++";
@@ -202,7 +199,6 @@ begin
    assert m_read  = '0' report "Should not read into memory" severity error;
    assert m_write = '0' report "Should not write into memory" severity error;
    wait for clk_period;
-	wait until s_waitrequest = '1' for 500 ns;
 	
 	
 	report "+++++++++ valid, dirty, read, tag not equal +++++++++";
@@ -220,9 +216,8 @@ begin
    assert s_waitrequest = '0' report "TIMEOUT: transaction never completed" severity error;
    assert s_readdata = x"00000000" report "readdata mismatch" severity error;
    wait for clk_period;
-	wait until s_waitrequest = '1' for 500 ns;
 	
-		
+	
 	report "+++++++++ valid, not dirty, read, tag not equal +++++++++";
    s_addr  <= x"00000010"; 
    s_write <= '0';
@@ -234,7 +229,6 @@ begin
    s_read <= '0';
    assert s_waitrequest = '0' report "TIMEOUT: transaction never completed" severity error;
    wait for clk_period;
-	wait until s_waitrequest = '1' for 500 ns;
 	
 	
 	report "+++++++++ valid, not dirty, write, tag not equal +++++++++";
@@ -249,7 +243,6 @@ begin
    s_write <= '0';
    assert s_waitrequest = '0' report "TIMEOUT: write never completed" severity error;
    wait for clk_period;
-	wait until s_waitrequest = '1' for 500 ns;
 	
 	
 	report "+++++++++ valid, dirty, write, tag not equal +++++++++";
@@ -267,7 +260,6 @@ begin
    s_write <= '0';
    assert s_waitrequest = '0' report "TIMEOUT: write never completed" severity error;
    wait for clk_period;
-	wait until s_waitrequest = '1' for 500 ns;
 	
 	
 	report "+++++++++ invalid, not dirty, read, tag not equal +++++++++";
@@ -281,7 +273,6 @@ begin
    s_read <= '0';
    assert s_waitrequest = '0' report "TIMEOUT: transaction never completed" severity error;
    wait for clk_period;
-	wait until s_waitrequest = '1' for 500 ns;
 	
 	
 	report "+++++++++ invalid, not dirty, write, tag not equal +++++++++";
@@ -296,7 +287,6 @@ begin
    s_write <= '0';
    assert s_waitrequest = '0' report "TIMEOUT: write never completed" severity error;
    wait for clk_period;
-	wait until s_waitrequest = '1' for 500 ns;
 
 	
 	
