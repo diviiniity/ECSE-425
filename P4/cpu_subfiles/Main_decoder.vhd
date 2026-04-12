@@ -9,7 +9,8 @@ entity Main_decoder_ is
 
         -- Outputs
         RAM_write      : out std_logic;
-        ALU_src_regB        : out std_logic;
+        ALU_src_regA        : out EXECUTE_OPERAND_A_SRC_TYPE_t;
+        ALU_src_regB        : out EXECUTE_OPERAND_B_SRC_TYPE_t;
         Imm_src        : out IMM_SRC_TYPE_t;
         dst_reg_write_en : out std_logic;
         ALU_op         : out ALU_OP_TYPE_t

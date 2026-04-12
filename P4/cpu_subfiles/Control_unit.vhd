@@ -12,7 +12,8 @@ entity Control_unit_ is
         -- Outputs
         RAM_write      : out std_logic;
         ALU_control    : out ALU_CONTROL_TYPE_t;
-        ALU_src_regB        : out std_logic;
+        ALU_src_regA        : out EXECUTE_OPERAND_A_SRC_TYPE_t;
+        ALU_src_regB        : out EXECUTE_OPERAND_B_SRC_TYPE_t;
         Imm_src        : out IMM_SRC_TYPE_t;
         dst_reg_write_en : out std_logic
     );
@@ -52,7 +53,7 @@ begin
         end case;
     end process opcode_decode;
     
-   ALU_decoder : entity work.ALU_decoder(Behavioral)
+   ALU_decoder : entity work.ALU_decoder_CU(Behavioral)
         port map(
             op_bit5 => op_code(5),  -- Use op_code here
             funct3 => funct3,
@@ -65,6 +66,7 @@ begin
         port map(
             op_type => op_type,  -- Use op_type here       
             RAM_write => RAM_write,
+            ALU_src_regA => ALU_src_regA,
             ALU_src_regB => ALU_src_regB,
             Imm_src => Imm_src,
             dst_reg_write_en => dst_reg_write_en,
