@@ -2,7 +2,7 @@ LIBRARY IEEE;
 USE IEEE.std_logic_1164.all;
 USE IEEE.numeric_std.all;
 
-ENTITY register_file IS 
+ENTITY Register_file_decode IS 
 PORT (
     clock: IN STD_LOGIC;
     read_reg_1: IN INTEGER RANGE 0 to 31;
@@ -13,9 +13,9 @@ PORT (
     reg_out_2: OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
     write_enable: IN STD_LOGIC
 );
-END register_file;
+END Register_file_decode;
 
-ARCHITECTURE rtl OF register_file IS
+ARCHITECTURE rtl OF Register_file_decode IS
 
 TYPE REG IS ARRAY(31 downto 0) OF STD_LOGIC_VECTOR(31 downto 0);
 signal registers: REG := (others => (others => '0'));

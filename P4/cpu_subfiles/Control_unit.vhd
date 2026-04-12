@@ -11,11 +11,13 @@ entity Control_unit_ is
         funct7    : in  std_logic_vector(6 downto 0);
         -- Outputs
         RAM_write      : out std_logic;
+        RAM_read       : out std_logic;
         ALU_control    : out ALU_CONTROL_TYPE_t;
         ALU_src_regA        : out EXECUTE_OPERAND_A_SRC_TYPE_t;
         ALU_src_regB        : out EXECUTE_OPERAND_B_SRC_TYPE_t;
         Imm_src        : out IMM_SRC_TYPE_t;
-        dst_reg_write_en : out std_logic
+        dst_reg_write_en : out std_logic;
+        wb_data_sel : out WRITE_BACK_SRC_TYPE_t
     );
 end Control_unit_;
 
@@ -66,11 +68,13 @@ begin
         port map(
             op_type => op_type,  -- Use op_type here       
             RAM_write => RAM_write,
+            RAM_read => RAM_read,
             ALU_src_regA => ALU_src_regA,
             ALU_src_regB => ALU_src_regB,
             Imm_src => Imm_src,
             dst_reg_write_en => dst_reg_write_en,
-            ALU_op => ALU_op
+            ALU_op => ALU_op,
+            wb_data_sel => wb_data_sel
         ); 
 
 end Behavioral;

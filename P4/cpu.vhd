@@ -19,7 +19,7 @@ PORT (
     d_addr: OUT INTEGER RANGE 0 TO ram_size-1;
     d_memwrite: OUT STD_LOGIC;
     d_memread: OUT STD_LOGIC;
-    d_waitrequest: IN STD_LOGIC;
+    d_waitrequest: IN STD_LOGIC
 
     -- rf_read_reg_1: OUT INTEGER RANGE 0 to 31;
     -- rf_read_reg_2: OUT INTEGER RANGE 0 to 31;
@@ -56,9 +56,11 @@ signal id_opcode: std_logic_vector(6 downto 0);
 signal id_funct3: std_logic_vector(2 downto 0);
 signal id_funct7: std_logic_vector(6 downto 0);
 signal id_RAM_write: std_logic;
-signal id_ALU_src_regA: EXECUTE_OPERAND_A_SRC_TYPE_t := EXECUTE_SRC_ALU;
-signal id_ALU_src_regB: EXECUTE_OPERAND_B_SRC_TYPE_t := EXECUTE_SRC_ALU;
+signal id_RAM_read: std_logic;
+signal id_ALU_src_regA: EXECUTE_OPERAND_A_SRC_TYPE_t := EXECUTE_SRC_REG_A;
+signal id_ALU_src_regB: EXECUTE_OPERAND_B_SRC_TYPE_t := EXECUTE_SRC_REG_B;
 signal id_dst_reg_write_en: std_logic;
+signal id_wb_data_sel: WRITE_BACK_SRC_TYPE_t := WB_ALU_RESULT;
 
 signal id_imm_src: IMM_SRC_TYPE_t;
 signal id_imm_in: std_logic_vector(24 downto 0);
@@ -70,8 +72,8 @@ signal id_ALU_Control: ALU_CONTROL_TYPE_t;
 
 
 type id_ex_buffer_t is record
-    operand_a: std_logic_vector(31 downto 0);
-    operand_b: std_logic_vector(31 downto 0);
+    rf_out_a: std_logic_vector(31 downto 0);
+    rf_out_b: std_logic_vector(31 downto 0);
     -- inst: std_logic_vector(31 downto 0);
     inst_pc: INTEGER RANGE 0 to ram_size-1;
     -- for detecting hazards
@@ -81,19 +83,26 @@ type id_ex_buffer_t is record
     ALU_Control: ALU_CONTROL_TYPE_t;
     ALU_operand_a_src: EXECUTE_OPERAND_A_SRC_TYPE_t;
     ALU_operand_b_src: EXECUTE_OPERAND_B_SRC_TYPE_t; 
+    RAM_write : std_logic;
+    RAM_read : std_logic;
+    wb_data_sel: WRITE_BACK_SRC_TYPE_t;
 end record;
 
 signal id_ex_buffer: id_ex_buffer_t := (
-    operand_a => (others => '0'),
-    operand_b => (others => '0'),
+    rf_out_a => (others => '0'),
+    rf_out_b => (others => '0'),
     -- inst => STALL_INST,
     inst_pc => 0,
     dst_reg_addr => (others => '0'),
     imm_out => (others => '0'),
     dst_reg_write_en => '0',
     ALU_Control => ALU_OP_TYPE_ADD,
-    ALU_operand_a_src => EXECUTE_SRC_ALU,
-    ALU_operand_b_src => EXECUTE_SRC_ALU
+    ALU_operand_a_src => EXECUTE_SRC_REG_A,
+    ALU_operand_b_src => EXECUTE_SRC_REG_B,
+    RAM_write => '0',
+    RAM_read => '0',
+    wb_data_sel => WB_ALU_RESULT
+
 
 );
 --execute signals
@@ -101,40 +110,59 @@ signal ex_ALU_i_a: std_logic_vector(31 downto 0);
 signal ex_ALU_i_b: std_logic_vector(31 downto 0);
 signal ex_result: std_logic_vector(31 downto 0);
 signal ex_zero : STD_LOGIC := '0';
+signal ex_branch_taken: std_logic := '0';
 
 
+--memory signals for execute to memory buffer
 type ex_mem_buffer_t is record
-    alu_output: std_logic_vector(31 downto 0);
+    alu_result: std_logic_vector(31 downto 0);
     branch_taken: std_logic;
-    -- probably unnecessary to carry full instruction here
-    inst: std_logic_vector(31 downto 0);
-    inst_pc: INTEGER RANGE 0 to ram_size-1;
-    dst_reg: std_logic_vector(4 downto 0);
+    -- -- probably unnecessary to carry full instruction here
+    -- inst: std_logic_vector(31 downto 0);
+    -- inst_pc: INTEGER RANGE 0 to ram_size-1;
+    dst_reg_addr: std_logic_vector(4 downto 0);
+    rf_out_B: std_logic_vector(31 downto 0);
+    dst_reg_write_en: std_logic;
+    RAM_write: std_logic;
+    RAM_read: std_logic;
+    wb_data_sel: WRITE_BACK_SRC_TYPE_t;
+
 end record;
 
 signal ex_mem_buffer: ex_mem_buffer_t := (
-    alu_output => (others => '0'),
+    alu_result => (others => '0'),
     branch_taken => '0',
-    inst => STALL_INST,
-    inst_pc => 0,
-    dst_reg => (others => '0')
+    dst_reg_addr => (others => '0'),
+    rf_out_B => (others => '0'),
+    dst_reg_write_en => '0',
+    RAM_write => '0',
+    RAM_read => '0',
+    wb_data_sel => WB_ALU_RESULT
+    
 );
 
+--memory signals
+signal mem_readdata: std_logic_vector(31 downto 0);
 
--- type mem_wb_buffer_t is record
---     is_wb: std_logic;
---     wb_data: std_logic_vector(31 downto 0);
---     dst_reg: std_logic_vector(4 downto 0);
--- end record;
+--write back signals
+type mem_wb_buffer_t is record
+    RAM_readdata: std_logic_vector(31 downto 0);
+    alu_result: std_logic_vector(31 downto 0);
+    dst_reg_addr: std_logic_vector(4 downto 0);
+    dst_reg_write_en: std_logic;
+    wb_data_sel: WRITE_BACK_SRC_TYPE_t;
+end record;
 
--- signal mem_wb_buffer: mem_wb_buffer_t := (
---     is_wb => '0',
---     wb_data => (others => '0'),
---     dst_reg => (others => '0')
--- );
-
-
-
+signal mem_wb_buffer: mem_wb_buffer_t := (
+    RAM_readdata => (others => '0'),
+    alu_result => (others => '0'),
+    dst_reg_addr => (others => '0'),
+    dst_reg_write_en => '0',
+    wb_data_sel => WB_ALU_RESULT
+);
+signal wb_data: std_logic_vector(31 downto 0);
+signal rf_write_data: std_logic_vector(31 downto 0);
+signal rf_write_enable: std_logic;
 BEGIN
 --connected to instruction memory
 i_addr <= if_pc;
@@ -143,7 +171,7 @@ inst_fetch: process(clock)
 begin
     if rising_edge(clock) then
         if ex_mem_buffer.branch_taken = '1' then
-            if_pc <= to_integer(unsigned(ex_mem_buffer.alu_output));
+            if_pc <= to_integer(unsigned(ex_mem_buffer.alu_result));
             if_id_buffer.inst <= STALL_INST;
         else 
             if_pc <= if_pc + 4;
@@ -168,11 +196,13 @@ Control_unit_inst: entity work.Control_unit_
     funct7 => id_funct7,
     --Outputs
     RAM_write => id_RAM_write,
+    RAM_read=>id_RAM_write,
     ALU_src_regA => id_ALU_src_regA,
     ALU_src_regB => id_ALU_src_regB,
     ALU_control => id_ALU_Control,
     Imm_src => id_imm_src,
-    dst_reg_write_en => id_dst_reg_write_en
+    dst_reg_write_en => id_dst_reg_write_en,
+    wb_data_sel => id_wb_data_sel
 );
 Imm_extension_inst: entity work.Imm_extension_decode
  port map(
@@ -200,11 +230,15 @@ begin
         id_ex_buffer.dst_reg_addr <= id_dst_reg;
         id_ex_buffer.imm_out <= id_imm_out;
         id_ex_buffer.dst_reg_write_en <= id_dst_reg_write_en;
-        id_ex_buffer.operand_a <= id_rf_out_A;
-        id_ex_buffer.operand_b <= id_rf_out_B;
+        id_ex_buffer.rf_out_a <= id_rf_out_A;
+        id_ex_buffer.rf_out_b <= id_rf_out_B;
         id_ex_buffer.ALU_Control <= id_ALU_Control;
         id_ex_buffer.ALU_operand_a_src <= id_ALU_src_regA;
         id_ex_buffer.ALU_operand_b_src <= id_ALU_src_regB;
+        id_ex_buffer.RAM_write <= id_RAM_write;
+        id_ex_buffer.RAM_read <= id_RAM_read;
+        id_ex_buffer.wb_data_sel <= id_wb_data_sel;
+
          -- Hazard detection logic (simplified)
 
         --Nizar: Preferbly we should have hazard unit seperate from this file
@@ -229,21 +263,21 @@ end process;
 --combinatory logic for execute stage
 -- Operand A selection
 with id_ex_buffer.ALU_operand_a_src select
-    ex_ALU_i_a <= id_ex_buffer.operand_a when EXECUTE_SRC_ALU,
+    ex_ALU_i_a <= id_ex_buffer.rf_out_a when EXECUTE_SRC_REG_A,
                      std_logic_vector(to_unsigned(id_ex_buffer.inst_pc, 32)) when EXECUTE_SRC_PC,
                      (others => '0') when others;
 
 -- Operand B selection
 with id_ex_buffer.ALU_operand_b_src select
-    ex_ALU_i_b <= id_ex_buffer.operand_b when EXECUTE_SRC_ALU,
+    ex_ALU_i_b <= id_ex_buffer.rf_out_b when EXECUTE_SRC_REG_B,
                      id_ex_buffer.imm_out when EXECUTE_SRC_IMM,
                      (others => '0') when others;
 
  --ALU Instantiate
 ALU: entity work.alu_execute(Behavioral)
     port map(
-        operand_a => ex_ALU_i_a,
-        operand_b => ex_ALU_i_b, 
+        i_operand_a => ex_ALU_i_a,
+        i_operand_b => ex_ALU_i_b,
         alu_control => id_ex_buffer.ALU_Control,
 
         result => ex_result,
@@ -252,16 +286,23 @@ ALU: entity work.alu_execute(Behavioral)
 -- execute branch logic
 execute_branch_logic:entity work.branch_logic(Behavioral)
     port map(
-    i_operand_a => id_ex_buffer.operand_a,
-    i_operand_b => id_ex_buffer.operand_b,
+    i_operand_a => id_ex_buffer.rf_out_a,
+    i_operand_b => id_ex_buffer.rf_out_b,
     i_zero => ex_zero,
-    o_branch_taken => ex_mem_buffer.branch_taken
+    o_branch_taken => ex_branch_taken
     );
 
 inst_execute: process(clock) 
 begin
     if rising_edge(clock) then
-        ex_mem_buffer.inst_pc <= id_ex_buffer.inst_pc;
+        ex_mem_buffer.branch_taken<=ex_branch_taken;
+        ex_mem_buffer.alu_result <= ex_result;
+        ex_mem_buffer.rf_out_B <= id_ex_buffer.rf_out_b;
+        ex_mem_buffer.dst_reg_addr <= id_ex_buffer.dst_reg_addr;
+        ex_mem_buffer.dst_reg_write_en <= id_ex_buffer.dst_reg_write_en;
+        ex_mem_buffer.RAM_write <= id_ex_buffer.RAM_write;
+        ex_mem_buffer.RAM_read <= id_ex_buffer.RAM_read;
+        ex_mem_buffer.wb_data_sel <= id_ex_buffer.wb_data_sel;
         -- if ex_mem_buffer.branch_taken = '1' then
         --     ex_mem_buffer.inst <= STALL_INST;
         --     ex_mem_buffer.dst_reg <= (others => '0');
@@ -269,15 +310,37 @@ begin
         --     ex_mem_buffer.inst <= id_ex_buffer.inst;
         --     ex_mem_buffer.dst_reg <= id_ex_buffer.dst_reg;
         -- end if;
-
-
-
-
     end if;
 end process;
 
 
+--memory comb logic
+--connection to data memory(LOGIC FOR WAIT REQUEST NOT IMPLEMENTED YET)
+--ouputs to memory
+d_writedata <= ex_mem_buffer.rf_out_B;
+d_addr <= to_integer(unsigned(ex_mem_buffer.alu_result(31 downto 0))); 
+d_memwrite <= ex_mem_buffer.RAM_write;
+d_memread <= ex_mem_buffer.RAM_read;
+--inputs from memory
+mem_readdata <= d_readdata;
 
+inst_memory: process(clock)
+begin
+    if rising_edge(clock) then
+        mem_wb_buffer.RAM_readdata <= d_readdata;
+        mem_wb_buffer.alu_result <= ex_mem_buffer.alu_result;
+        mem_wb_buffer.dst_reg_addr <= ex_mem_buffer.dst_reg_addr;
+        mem_wb_buffer.dst_reg_write_en <= ex_mem_buffer.dst_reg_write_en;
+        mem_wb_buffer.wb_data_sel<= ex_mem_buffer.wb_data_sel;
+    end if;
+end process;
+--comb logic for write back
+rf_write_enable <= mem_wb_buffer.dst_reg_write_en;
+--logic to determin what to write to register file
+with mem_wb_buffer.wb_data_sel select
+    rf_write_data <= mem_wb_buffer.alu_result when WB_ALU_RESULT,
+                     mem_wb_buffer.RAM_readdata when WB_MEM_DATA,
+                     (others => '0') when others;
 END ARCHITECTURE rtl;
 
     

@@ -1,28 +1,10 @@
 
-----------------------------------------------------------------------------------
--- Company: 
--- Engineer: 
--- 
--- Create Date: 07/05/2025 05:18:26 PM
--- Design Name: 
--- Module Name: ALU_decoder - Behavioral
--- Project Name: 
--- Target Devices: 
--- Tool Versions: 
--- Description: ALU Decoder for RISC-V CPU
--- 
--- Dependencies: 
--- 
--- Revision:
--- Revision 0.01 - File Created
--- Additional Comments:
--- 
-----------------------------------------------------------------------------------
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use work.cpu_package.all;
-entity ALU_decoder is
+entity ALU_decoder_CU is
     port (
         -- Inputs
         op_bit5        : in  std_logic;                    -- Opcode bit 5
@@ -32,9 +14,9 @@ entity ALU_decoder is
         -- Outputs
         ALU_control    :  out ALU_CONTROL_TYPE_t -- ALU control signals
     );
-end ALU_decoder;
+end ALU_decoder_CU;
 
-architecture Behavioral of ALU_decoder is
+architecture Behavioral of ALU_decoder_CU is
     
 
 begin
