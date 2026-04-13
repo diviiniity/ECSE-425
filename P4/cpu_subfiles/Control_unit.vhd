@@ -10,14 +10,15 @@ entity Control_unit_ is
         funct3    : in  std_logic_vector(2 downto 0);
         funct7    : in  std_logic_vector(6 downto 0);
         -- Outputs
-        RAM_write      : out std_logic;
-        RAM_read       : out std_logic;
-        ALU_control    : out ALU_CONTROL_TYPE_t;
-        ALU_src_regA        : out EXECUTE_OPERAND_A_SRC_TYPE_t;
-        ALU_src_regB        : out EXECUTE_OPERAND_B_SRC_TYPE_t;
-        Imm_src        : out IMM_SRC_TYPE_t;
+        RAM_write : out std_logic;
+        RAM_read : out std_logic;
+        ALU_control : out ALU_CONTROL_TYPE_t;
+        ALU_src_regA : out EXECUTE_OPERAND_A_SRC_TYPE_t;
+        ALU_src_regB : out EXECUTE_OPERAND_B_SRC_TYPE_t;
+        Imm_src : out IMM_SRC_TYPE_t;
         dst_reg_write_en : out std_logic;
-        wb_data_sel : out WRITE_BACK_SRC_TYPE_t
+        wb_data_sel : out WRITE_BACK_SRC_TYPE_t;
+        is_jump : out std_logic 
     );
 end Control_unit_;
 
@@ -60,6 +61,7 @@ begin
             op_bit5 => op_code(5),  -- Use op_code here
             funct3 => funct3,
             funct7_bit5 => funct7(5),
+            funct7_bit0 => funct7(0),
             ALU_op => ALU_op,
             ALU_control => ALU_control
         ); 
@@ -74,7 +76,8 @@ begin
             Imm_src => Imm_src,
             dst_reg_write_en => dst_reg_write_en,
             ALU_op => ALU_op,
-            wb_data_sel => wb_data_sel
-        ); 
+            wb_data_sel => wb_data_sel,
+            is_jump => is_jump
+        );
 
 end Behavioral;

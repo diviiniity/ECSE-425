@@ -10,6 +10,7 @@ entity ALU_decoder_CU is
         op_bit5        : in  std_logic;                    -- Opcode bit 5
         funct3         : in  std_logic_vector(2 downto 0); -- Function field 3
         funct7_bit5    : in  std_logic;                    -- Function field 7 bit 5
+        funct7_bit0    : in  std_logic;                    -- Function field 7 bit 0 (1 = RV32M, ex. MUL)
         ALU_op         : in  ALU_OP_TYPE_t; -- ALU operation type
         -- Outputs
         ALU_control    :  out ALU_CONTROL_TYPE_t -- ALU control signals
@@ -20,7 +21,7 @@ architecture Behavioral of ALU_decoder_CU is
     
 
 begin
-    process(ALU_op, funct3, funct7_bit5, op_bit5)
+    process(ALU_op, funct3, funct7_bit5, funct7_bit0, op_bit5)
     begin
             case ALU_op is
                 when ALUOP_ADD =>
@@ -52,11 +53,13 @@ begin
                     -- R-type and I-type operations - decode based on funct3
                     case funct3 is
                         when "000" =>
-                            -- ADD/ADDI or SUB
-                            -- For R-type: SUB if funct7[5] = 1, ADD if funct7[5] = 0
+                            -- ADD/ADDI, SUB, or MUL
+                            -- For R-type: funct7=0100000 → SUB; funct7=0000001 → MUL; funct7=0000000 → ADD
                             -- For I-type: Always ADD (ADDI)
                             if (op_bit5 = '1' and funct7_bit5 = '1') then
                                 ALU_control <= ALU_OP_TYPE_SUB;  -- SUB (R-type only)
+                            elsif (op_bit5 = '1' and funct7_bit0 = '1') then
+                                ALU_control <= ALU_OP_TYPE_MUL;  -- MUL
                             else
                                 ALU_control <= ALU_OP_TYPE_ADD;  -- ADD/ADDI
                             end if;
