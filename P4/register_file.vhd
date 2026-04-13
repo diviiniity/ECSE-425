@@ -22,17 +22,21 @@ signal registers: REG := (others => (others => '0'));
 
 BEGIN
 
-proc: process(clock)
+-- Asynchronous reads: always reflect current register contents.
+-- This is the standard textbook design; the pipeline registers in
+-- inst_decode provide the necessary synchronization.
+-- x0 is always 0 (enforced on write, never overwritten).
+reg_out_1 <= registers(read_reg_1);
+reg_out_2 <= registers(read_reg_2);
+
+-- Synchronous write
+write_proc: process(clock)
 begin
     if rising_edge(clock) then
-        reg_out_1 <= registers(read_reg_1);
-        reg_out_2 <= registers(read_reg_2);
-
-        if(write_enable = '1' AND write_reg /= 0) then
+        if write_enable = '1' AND write_reg /= 0 then
             registers(write_reg) <= write_data;
         end if;
     end if;
-end process proc;
-END ARCHITECTURE rtl;
+end process write_proc;
 
-    
+END ARCHITECTURE rtl;
