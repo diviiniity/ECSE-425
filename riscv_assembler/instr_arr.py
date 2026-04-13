@@ -126,10 +126,31 @@ class _SB(Instruction):
 
 	@staticmethod
 	def immediate(imm, n):
-		mod_imm = format(((1 << 13) - 1) & int(imm), '012b') # Bokun: changed from 13 to 12
+		imm = int(imm)
+
+		# Step 1: shift (RISC-V encodes offset >> 1)
+		imm_shifted = imm >> 1
+
+		# Step 2: mask to 12 bits (we store imm[12:1])
+		imm_bin = format(imm_shifted & ((1 << 12) - 1), '012b')
+
+		# Bit layout (after shift):
+		# imm_bin[0] = imm[11]
+		# imm_bin[1:7] = imm[10:5]
+		# imm_bin[7:11] = imm[4:1]
+		# imm_bin[11] = imm[0] (we ignore, always 0 originally)
+
+		imm_11   = imm_bin[0]
+		imm_10_5 = imm_bin[1:7]
+		imm_4_1  = imm_bin[7:11]
+		imm_12   = '0' if imm >= 0 else '1'  # sign bit
+
 		if n == 1:
-			return mod_imm[12-12] + mod_imm[12-10:12-4]
-		return mod_imm[12-4:12-0] + mod_imm[12-11]
+			# inst[31] + inst[30:25]
+			return imm_12 + imm_10_5
+		else:
+			# inst[11:8] + inst[7]
+			return imm_4_1 + imm_11
 
 class _U(Instruction):
 	def __repr__(self):

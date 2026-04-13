@@ -386,7 +386,9 @@ end process;
 --connection to data memory(LOGIC FOR WAIT REQUEST NOT IMPLEMENTED YET)
 --ouputs to memory
 d_writedata <= ex_mem_buffer.rf_out_B;
-d_addr <= to_integer(unsigned(ex_mem_buffer.alu_result(31 downto 0))); 
+d_addr <= to_integer(unsigned(ex_mem_buffer.alu_result))
+          when (ex_mem_buffer.RAM_write = '1' or ex_mem_buffer.RAM_read = '1')
+          else 0;
 d_memwrite <= ex_mem_buffer.RAM_write;
 d_memread <= ex_mem_buffer.RAM_read;
 --inputs from memory
