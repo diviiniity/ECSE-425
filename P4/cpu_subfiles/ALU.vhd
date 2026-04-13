@@ -29,7 +29,7 @@ begin
             when ALU_OP_TYPE_SUB => -- SUB
                 temp_result := signed(i_operand_a) - signed(i_operand_b);
             when ALU_OP_TYPE_MUL => -- MUL
-                temp_result := signed(i_operand_a) * signed(i_operand_b);
+                temp_result := resize(signed(i_operand_a) * signed(i_operand_b), 32);
             when ALU_OP_TYPE_AND => -- AND
                 temp_result := signed(i_operand_a and i_operand_b);
             when ALU_OP_TYPE_OR => -- OR

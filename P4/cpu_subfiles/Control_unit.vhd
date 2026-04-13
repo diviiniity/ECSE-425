@@ -3,7 +3,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use work.cpu_package.ALL;  
 
-entity Control_unit_ is
+entity Control_unit is
     port (
         -- Inputs
         op_code   : in  std_logic_vector(6 downto 0);  -- Renamed to avoid conflict
@@ -18,11 +18,12 @@ entity Control_unit_ is
         Imm_src : out IMM_SRC_TYPE_t;
         dst_reg_write_en : out std_logic;
         wb_data_sel : out WRITE_BACK_SRC_TYPE_t;
-        is_jump : out std_logic 
+        is_jump : out std_logic;
+        is_branch : out std_logic 
     );
-end Control_unit_;
+end Control_unit;
 
-architecture Behavioral of Control_unit_ is
+architecture Behavioral of Control_unit is
 
 signal ALU_op : ALU_OP_TYPE_t;
 signal op_type : CONTROL_UNIT_OP_TYPE_t;  
@@ -66,7 +67,7 @@ begin
             ALU_control => ALU_control
         ); 
         
-    Main_decoder : entity work.Main_decoder_(Behavioral)
+    Main_decoder : entity work.Main_decoder(Behavioral)
         port map(
             op_type => op_type,  -- Use op_type here       
             RAM_write => RAM_write,
@@ -77,7 +78,8 @@ begin
             dst_reg_write_en => dst_reg_write_en,
             ALU_op => ALU_op,
             wb_data_sel => wb_data_sel,
-            is_jump => is_jump
+            is_jump => is_jump,
+            is_branch => is_branch
         );
 
 end Behavioral;

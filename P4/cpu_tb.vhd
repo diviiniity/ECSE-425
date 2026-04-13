@@ -34,8 +34,8 @@ ARCHITECTURE rtl OF cpu_tb IS
             rf_read_reg_2: OUT INTEGER RANGE 0 to 31;
             rf_write_reg: OUT INTEGER RANGE 0 to 31;
             rf_write_data: OUT STD_LOGIC_VECTOR (31 DOWNTO 0);
-            rf_reg_out_1: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-            rf_reg_out_2: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            id_rf_out_A: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            id_rf_out_B: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
             rf_write_enable: OUT STD_LOGIC
         );
     END COMPONENT;
@@ -169,8 +169,8 @@ BEGIN
         rf_read_reg_2 => cpu_rf_read_reg_2,
         rf_write_reg => rf_write_reg,
         rf_write_data => rf_write_data,
-        rf_reg_out_1 => rf_reg_out_1,
-        rf_reg_out_2 => rf_reg_out_2,
+        id_rf_out_A => rf_reg_out_1,
+        id_rf_out_B => rf_reg_out_2,
         rf_write_enable => rf_write_enable
     );
 

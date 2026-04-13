@@ -9,6 +9,7 @@ entity branch_logic is
         i_zero : in  std_logic;                           -- ALU zero flag
         i_funct3 : in  std_logic_vector(2 downto 0);      -- branch condition type
         i_is_jump : in  std_logic;                        -- '1' for JAL/JALR (unconditional jump)
+        i_is_branch : in  std_logic;                        -- '1' for conditional branch 
         o_branch_taken : out std_logic
     );
 end branch_logic;
@@ -20,7 +21,7 @@ begin
         if i_is_jump = '1' then
             -- JAL / JALR: unconditional redirect
             o_branch_taken <= '1';
-        else
+        elsif i_is_branch = '1' then
             case i_funct3 is
                 when "000" => -- BEQ: branch if rs1 == rs2
                     if i_operand_a = i_operand_b then
@@ -53,6 +54,8 @@ begin
                 when others =>
                     o_branch_taken <= '0';
             end case;
+        else 
+            o_branch_taken <= '0';
         end if;
     end process;
 end Behavioral;

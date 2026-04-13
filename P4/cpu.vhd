@@ -19,15 +19,15 @@ PORT (
     d_addr: OUT INTEGER RANGE 0 TO ram_size-1;
     d_memwrite: OUT STD_LOGIC;
     d_memread: OUT STD_LOGIC;
-    d_waitrequest: IN STD_LOGIC
+    d_waitrequest: IN STD_LOGIC;
 
-    -- rf_read_reg_1: OUT INTEGER RANGE 0 to 31;
-    -- rf_read_reg_2: OUT INTEGER RANGE 0 to 31;
-    -- rf_write_reg: OUT INTEGER RANGE 0 to 31;
-    -- rf_write_data: OUT STD_LOGIC_VECTOR (31 DOWNTO 0);
-    -- rf_reg_out_1: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    -- rf_reg_out_2: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    -- rf_write_enable: OUT STD_LOGIC
+    rf_read_reg_1: OUT INTEGER RANGE 0 to 31;
+    rf_read_reg_2: OUT INTEGER RANGE 0 to 31;
+    rf_write_reg: OUT INTEGER RANGE 0 to 31;
+    rf_write_data: OUT STD_LOGIC_VECTOR (31 DOWNTO 0);
+    id_rf_out_A: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    id_rf_out_B: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+    rf_write_enable: OUT STD_LOGIC
 );
 END cpu;
 
@@ -66,13 +66,14 @@ signal id_ALU_src_regB: EXECUTE_OPERAND_B_SRC_TYPE_t := EXECUTE_SRC_REG_B;
 signal id_dst_reg_write_en: std_logic;
 signal id_wb_data_sel: WRITE_BACK_SRC_TYPE_t := WB_ALU_RESULT;
 signal id_is_jump: std_logic;
+signal id_is_branch: std_logic;
 
 signal id_imm_src: IMM_SRC_TYPE_t;
 signal id_imm_in: std_logic_vector(24 downto 0);
 signal id_imm_out: std_logic_vector(31 downto 0);
 
-signal id_rf_out_A: std_logic_vector(31 downto 0);
-signal id_rf_out_B: std_logic_vector(31 downto 0);
+-- signal id_rf_out_A: std_logic_vector(31 downto 0);
+-- signal id_rf_out_B: std_logic_vector(31 downto 0);
 signal id_ALU_Control: ALU_CONTROL_TYPE_t;
 
 
@@ -93,6 +94,7 @@ type id_ex_buffer_t is record
     wb_data_sel: WRITE_BACK_SRC_TYPE_t;
     funct3: std_logic_vector(2 downto 0);
     is_jump: std_logic;
+    is_branch: std_logic;
 end record;
 
 signal id_ex_buffer: id_ex_buffer_t := (
@@ -110,7 +112,8 @@ signal id_ex_buffer: id_ex_buffer_t := (
     RAM_read => '0',
     wb_data_sel => WB_ALU_RESULT,
     funct3 => (others => '0'),
-    is_jump => '0'
+    is_jump => '0',
+    is_branch => '0'
 );
 --execute signals
 signal ex_ALU_i_a: std_logic_vector(31 downto 0);
@@ -169,8 +172,6 @@ signal mem_wb_buffer: mem_wb_buffer_t := (
     inst_pc => 0
 );
 signal wb_data: std_logic_vector(31 downto 0);
-signal rf_write_data: std_logic_vector(31 downto 0);
-signal rf_write_enable: std_logic;
 BEGIN
 --connected to instruction memory
 i_addr <= if_pc;
@@ -231,7 +232,7 @@ id_addr_regA <= if_id_buffer.inst(19 downto 15);
 id_addr_regB <= if_id_buffer.inst(24 downto 20);
 id_dst_reg <= if_id_buffer.inst(11 downto 7);
 id_imm_in <= if_id_buffer.inst(31 downto 7);
-Control_unit_inst: entity work.Control_unit_
+Control_unit_inst: entity work.Control_unit
  port map(
     --Inputs
     op_code => id_opcode,
@@ -246,7 +247,8 @@ Control_unit_inst: entity work.Control_unit_
     Imm_src => id_imm_src,
     dst_reg_write_en => id_dst_reg_write_en,
     wb_data_sel => id_wb_data_sel,
-    is_jump => id_is_jump
+    is_jump => id_is_jump,
+    is_branch => id_is_branch
 );
 Imm_extension_inst: entity work.Imm_extension_decode
  port map(
@@ -254,17 +256,24 @@ Imm_extension_inst: entity work.Imm_extension_decode
     imm_src => id_imm_src,
     imm_out => id_imm_out
 );
-Register_file_decode: entity work.Register_file_decode
- port map(
-    clock => clock,
-    read_reg_1 => to_integer(unsigned(id_addr_regA)),
-    read_reg_2 => to_integer(unsigned(id_addr_regB)),
-    write_reg => to_integer(unsigned(id_dst_reg)),
-    write_data => rf_write_data,
-    write_enable => rf_write_enable,
-    reg_out_1 => id_rf_out_A,
-    reg_out_2 => id_rf_out_B
-);
+
+rf_read_reg_1 <= to_integer(unsigned(id_addr_regA));
+rf_read_reg_2 <= to_integer(unsigned(id_addr_regB));
+rf_write_reg <= to_integer(unsigned(id_dst_reg));
+-- rf_reg_out_1 <= id_rf_out_A;
+-- rf_reg_out_2 <= id_rf_out_B;
+
+-- Register_file_decode: entity work.Register_file_decode
+--  port map(
+--     clock => clock,
+--     read_reg_1 => read_reg_1_int,
+--     read_reg_2 => read_reg_2_int,
+--     write_reg => write_reg_int,
+--     write_data => rf_write_data,
+--     write_enable => rf_write_enable,
+--     reg_out_1 => id_rf_out_A,
+--     reg_out_2 => id_rf_out_B
+-- );
 
 inst_decode: process(clock)
 begin
@@ -275,6 +284,7 @@ begin
             id_ex_buffer.RAM_write <= '0';
             id_ex_buffer.RAM_read <= '0';
             id_ex_buffer.is_jump <= '0';
+            id_ex_buffer.is_branch <= '0';
             id_ex_buffer.dst_reg_addr <= (others => '0');
             id_ex_buffer.funct3 <= (others => '0');
             id_ex_buffer.inst_pc <= if_id_buffer.inst_pc;
@@ -301,6 +311,7 @@ begin
             id_ex_buffer.wb_data_sel <= id_wb_data_sel;
             id_ex_buffer.funct3 <= id_funct3;
             id_ex_buffer.is_jump <= id_is_jump;
+            id_ex_buffer.is_branch <= id_is_branch;
         end if;
     end if;
 end process;
@@ -337,6 +348,7 @@ execute_branch_logic: entity work.branch_logic(Behavioral)
     i_zero => ex_zero,
     i_funct3 => id_ex_buffer.funct3,
     i_is_jump => id_ex_buffer.is_jump,
+    i_is_branch => id_ex_buffer.is_branch,
     o_branch_taken => ex_branch_taken
     );
 

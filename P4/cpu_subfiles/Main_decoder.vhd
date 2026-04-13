@@ -2,7 +2,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use work.cpu_package.all;
-entity Main_decoder_ is
+entity Main_decoder is
     port (
         -- Inputs
         op_type : in  CONTROL_UNIT_OP_TYPE_t;
@@ -15,12 +15,13 @@ entity Main_decoder_ is
         dst_reg_write_en : out std_logic;
         ALU_op : out ALU_OP_TYPE_t;
         wb_data_sel : out WRITE_BACK_SRC_TYPE_t;
-        is_jump : out std_logic
+        is_jump : out std_logic;
+        is_branch : out std_logic
     );
-end Main_decoder_;
+end Main_decoder;
 
 
-architecture Behavioral of Main_decoder_ is
+architecture Behavioral of Main_decoder is
 constant ENABLE : std_logic := '1';
 constant DISABLE : std_logic := '0';
 begin
@@ -36,6 +37,7 @@ begin
         ALU_op <= ALUOP_ADD;
         wb_data_sel <= WB_ALU_RESULT;
         is_jump <= DISABLE;
+        is_branch <= DISABLE;
 
         case op_type is
             when OP_R_TYPE =>
@@ -82,6 +84,7 @@ begin
                 ALU_src_regB     <= EXECUTE_SRC_IMM;    -- branch offset
                 Imm_src          <= IMM_B_TYPE;
                 ALU_op           <= ALUOP_ADD;
+                is_branch        <= ENABLE;
 
             when OP_JAL =>
                 -- JAL: rd = PC+4;  PC = PC + imm  (unconditional jump)
