@@ -126,7 +126,7 @@ class _SB(Instruction):
 
 	@staticmethod
 	def immediate(imm, n):
-		mod_imm = format(((1 << 12) - 1) & int(imm), '012b') # Bokun: changed from 13 to 12
+		mod_imm = format(((1 << 13) - 1) & int(imm), '012b') # Bokun: changed from 13 to 12
 		if n == 1:
 			return mod_imm[12-12] + mod_imm[12-10:12-4]
 		return mod_imm[12-4:12-0] + mod_imm[12-11]
@@ -172,8 +172,21 @@ class _UJ(Instruction):
 
 	@staticmethod
 	def immediate(imm):
-		mod_imm = format(((1 << 20) - 1) & int(imm), '020b') # Bokun fixed no. of bits (21 -> 20)
-		return mod_imm[20-20] + mod_imm[20-10:20-0] + mod_imm[20-11] + mod_imm[20-19:20-11]
+		imm = int(imm)
+
+		# JAL requires offset >> 1
+		imm_shifted = imm >> 1
+
+		# mask to 20 bits (excluding implicit bit 0)
+		imm_bin = format(imm_shifted & ((1 << 20) - 1), '020b')
+
+		# assign fields
+		imm_20    = imm_bin[0]        # bit 19 → becomes imm[20]
+		imm_10_1  = imm_bin[10:20]    # bits [9:0]
+		imm_11    = imm_bin[9]        # bit 10
+		imm_19_12 = imm_bin[1:9]      # bits [18:11]
+
+		return imm_20 + imm_10_1 + imm_11 + imm_19_12
 
 class InstructionParser:
 	def organize(self, *args):
