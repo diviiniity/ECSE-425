@@ -259,7 +259,7 @@ Imm_extension_inst: entity work.Imm_extension_decode
 
 rf_read_reg_1 <= to_integer(unsigned(id_addr_regA));
 rf_read_reg_2 <= to_integer(unsigned(id_addr_regB));
-rf_write_reg <= to_integer(unsigned(id_dst_reg));
+rf_write_reg <= to_integer(unsigned(mem_wb_buffer.dst_reg_addr));
 -- rf_reg_out_1 <= id_rf_out_A;
 -- rf_reg_out_2 <= id_rf_out_B;
 

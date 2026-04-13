@@ -57,7 +57,7 @@ ARCHITECTURE rtl OF cpu_tb IS
         );
     END COMPONENT;
 
-    COMPONENT register_file IS 
+    COMPONENT Register_file_decode IS 
         PORT(
             clock: IN STD_LOGIC;
             read_reg_1: IN INTEGER RANGE 0 to 31;
@@ -140,7 +140,7 @@ BEGIN
         waitrequest => d_waitrequest
     );
 
-    rf: register_file
+    rf: Register_file_decode
     PORT MAP(
         clock => clock,
         read_reg_1 => rf_read_reg_1,
@@ -182,8 +182,8 @@ BEGIN
     d_memwrite <= cpu_d_memwrite when data_dump_ready = '0' else '0';
     d_memread <= cpu_d_memread when data_dump_ready = '0' else dump_d_memread;
 
-    rf_read_reg_1 <= cpu_rf_read_reg_1 when data_dump_ready = '1' else dump_rf_read_reg_1;
-    rf_read_reg_2 <= cpu_rf_read_reg_2 when data_dump_ready = '1' else dump_rf_read_reg_2;
+    rf_read_reg_1 <= cpu_rf_read_reg_1 when data_dump_ready = '0' else dump_rf_read_reg_1;
+    rf_read_reg_2 <= cpu_rf_read_reg_2 when data_dump_ready = '0' else dump_rf_read_reg_2;
 
 
     clk_process: PROCESS
