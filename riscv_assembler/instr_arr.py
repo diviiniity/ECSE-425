@@ -126,31 +126,10 @@ class _SB(Instruction):
 
 	@staticmethod
 	def immediate(imm, n):
-		imm = int(imm)
-
-		# Step 1: shift (RISC-V encodes offset >> 1)
-		imm_shifted = imm >> 1
-
-		# Step 2: mask to 12 bits (we store imm[12:1])
-		imm_bin = format(imm_shifted & ((1 << 12) - 1), '012b')
-
-		# Bit layout (after shift):
-		# imm_bin[0] = imm[11]
-		# imm_bin[1:7] = imm[10:5]
-		# imm_bin[7:11] = imm[4:1]
-		# imm_bin[11] = imm[0] (we ignore, always 0 originally)
-
-		imm_11   = imm_bin[0]
-		imm_10_5 = imm_bin[1:7]
-		imm_4_1  = imm_bin[7:11]
-		imm_12   = '0' if imm >= 0 else '1'  # sign bit
-
+		mod_imm = format(((1 << 13) - 1) & int(imm), '013b') # Bokun: changed from 13 to 12
 		if n == 1:
-			# inst[31] + inst[30:25]
-			return imm_12 + imm_10_5
-		else:
-			# inst[11:8] + inst[7]
-			return imm_4_1 + imm_11
+			return mod_imm[12-12] + mod_imm[12-10:12-4]
+		return mod_imm[12-4:12-0] + mod_imm[12-11]
 
 class _U(Instruction):
 	def __repr__(self):
@@ -193,21 +172,8 @@ class _UJ(Instruction):
 
 	@staticmethod
 	def immediate(imm):
-		imm = int(imm)
-
-		# JAL requires offset >> 1
-		imm_shifted = imm >> 1
-
-		# mask to 20 bits (excluding implicit bit 0)
-		imm_bin = format(imm_shifted & ((1 << 20) - 1), '020b')
-
-		# assign fields
-		imm_20    = imm_bin[0]        # bit 19 → becomes imm[20]
-		imm_10_1  = imm_bin[10:20]    # bits [9:0]
-		imm_11    = imm_bin[9]        # bit 10
-		imm_19_12 = imm_bin[1:9]      # bits [18:11]
-
-		return imm_20 + imm_10_1 + imm_11 + imm_19_12
+		mod_imm = format(((1 << 21) - 1) & int(imm), '021b') # Bokun fixed no. of bits (21 -> 20)
+		return mod_imm[20-20] + mod_imm[20-10:20-0] + mod_imm[20-11] + mod_imm[20-19:20-11]
 
 class InstructionParser:
 	def organize(self, *args):
