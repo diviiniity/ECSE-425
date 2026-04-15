@@ -81,7 +81,7 @@ begin
                             ALU_control <= ALU_OP_TYPE_XOR;
                             
                         when "101" =>
-                            if funct7_bit5 = '1' then
+                            if funct7_bit5 = '0' then
                                 -- SRL/SRLI - Shift Right Logical
                                 ALU_control <= ALU_OP_TYPE_SRL;
                             else
