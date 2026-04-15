@@ -266,6 +266,8 @@ BEGIN
             
         END LOOP;
 
+        wait until rising_edge(clock);
+
         for i in 0 to 15 LOOP
             dump_rf_read_reg_1 <= 2*i;
             dump_rf_read_reg_2 <= 2*i+1;
