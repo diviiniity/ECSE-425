@@ -28,15 +28,7 @@ ARCHITECTURE rtl OF cpu_tb IS
             d_addr: OUT INTEGER RANGE 0 TO ram_size-1;
             d_memwrite: OUT STD_LOGIC;
             d_memread: OUT STD_LOGIC;
-            d_waitrequest: IN STD_LOGIC;
-
-            rf_read_reg_1: OUT INTEGER RANGE 0 to 31;
-            rf_read_reg_2: OUT INTEGER RANGE 0 to 31;
-            rf_write_reg: OUT INTEGER RANGE 0 to 31;
-            rf_write_data: OUT STD_LOGIC_VECTOR (31 DOWNTO 0);
-            id_rf_out_A: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-            id_rf_out_B: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-            rf_write_enable: OUT STD_LOGIC
+            d_waitrequest: IN STD_LOGIC
         );
     END COMPONENT;
 
@@ -54,19 +46,6 @@ ARCHITECTURE rtl OF cpu_tb IS
             memread: IN STD_LOGIC := '0';
             readdata: OUT STD_LOGIC_VECTOR (31 DOWNTO 0);
             waitrequest: OUT STD_LOGIC
-        );
-    END COMPONENT;
-
-    COMPONENT Register_file_decode IS 
-        PORT(
-            clock: IN STD_LOGIC;
-            read_reg_1: IN INTEGER RANGE 0 to 31;
-            read_reg_2: IN INTEGER RANGE 0 to 31;
-            write_reg: IN INTEGER RANGE 0 to 31;
-            write_data: IN STD_LOGIC_VECTOR (31 DOWNTO 0);
-            reg_out_1: OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-            reg_out_2: OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-            write_enable: IN STD_LOGIC
         );
     END COMPONENT;
 
@@ -99,20 +78,6 @@ ARCHITECTURE rtl OF cpu_tb IS
     signal dump_d_memread: STD_LOGIC := '0';
 
 
-    signal rf_read_reg_1: INTEGER RANGE 0 to 31;
-    signal rf_read_reg_2: INTEGER RANGE 0 to 31;
-    signal rf_write_reg: INTEGER RANGE 0 to 31;
-    signal rf_write_data: STD_LOGIC_VECTOR (31 DOWNTO 0);
-    signal rf_reg_out_1: STD_LOGIC_VECTOR(31 DOWNTO 0);
-    signal rf_reg_out_2: STD_LOGIC_VECTOR(31 DOWNTO 0);
-    signal rf_write_enable: STD_LOGIC;
-
-    signal cpu_rf_read_reg_1: INTEGER RANGE 0 to 31;
-    signal dump_rf_read_reg_1: INTEGER RANGE 0 to 31;
-    signal cpu_rf_read_reg_2: INTEGER RANGE 0 to 31;
-    signal dump_rf_read_reg_2: INTEGER RANGE 0 to 31;
-
-
     signal inst_loading_done: STD_LOGIC := '0';
     signal data_dump_ready: STD_LOGIC := '0';
     signal data_dump_done: STD_LOGIC := '0';
@@ -140,18 +105,6 @@ BEGIN
         waitrequest => d_waitrequest
     );
 
-    rf: Register_file_decode
-    PORT MAP(
-        clock => clock,
-        read_reg_1 => rf_read_reg_1,
-        read_reg_2 => rf_read_reg_2,
-        write_reg => rf_write_reg,
-        write_data => rf_write_data,
-        reg_out_1 => rf_reg_out_1,
-        reg_out_2 => rf_reg_out_2,
-        write_enable => rf_write_enable
-    );
-
     dut: cpu
     PORT MAP(
         clock => cpu_clock,
@@ -164,14 +117,7 @@ BEGIN
         d_addr => cpu_d_addr,
         d_memwrite => cpu_d_memwrite,
         d_memread => cpu_d_memread,
-        d_waitrequest => d_waitrequest,
-        rf_read_reg_1 => cpu_rf_read_reg_1,
-        rf_read_reg_2 => cpu_rf_read_reg_2,
-        rf_write_reg => rf_write_reg,
-        rf_write_data => rf_write_data,
-        id_rf_out_A => rf_reg_out_1,
-        id_rf_out_B => rf_reg_out_2,
-        rf_write_enable => rf_write_enable
+        d_waitrequest => d_waitrequest
     );
 
     cpu_clock <= clock when data_dump_ready = '0' AND inst_loading_done = '1' else '0';
@@ -181,10 +127,6 @@ BEGIN
     d_addr <= cpu_d_addr when data_dump_ready = '0' else dump_d_addr;
     d_memwrite <= cpu_d_memwrite when data_dump_ready = '0' else '0';
     d_memread <= cpu_d_memread when data_dump_ready = '0' else dump_d_memread;
-
-    rf_read_reg_1 <= cpu_rf_read_reg_1 when data_dump_ready = '0' else dump_rf_read_reg_1;
-    rf_read_reg_2 <= cpu_rf_read_reg_2 when data_dump_ready = '0' else dump_rf_read_reg_2;
-
 
     clk_process: PROCESS
         variable clk_cnt: INTEGER := 0;
@@ -244,7 +186,6 @@ BEGIN
 
     data_dump_process: PROCESS
         file mem_f: text open write_mode is "memory.txt";
-        file reg_f: text open write_mode is "register_file.txt";
         variable l: line;
         variable addr: integer := 0;
     BEGIN
@@ -266,19 +207,6 @@ BEGIN
             
         END LOOP;
 
-        wait until rising_edge(clock);
-
-        for i in 0 to 15 LOOP
-            dump_rf_read_reg_1 <= 2*i;
-            dump_rf_read_reg_2 <= 2*i+1;
-
-            wait until rising_edge(clock);
-
-            write(l, to_bitvector(rf_reg_out_1));
-            writeline(reg_f, l);
-            write(l, to_bitvector(rf_reg_out_2));
-            writeline(reg_f, l);
-        END LOOP;
         data_dump_done <= '1';
         wait;
     END PROCESS;

@@ -19,15 +19,7 @@ PORT (
     d_addr: OUT INTEGER RANGE 0 TO ram_size-1;
     d_memwrite: OUT STD_LOGIC;
     d_memread: OUT STD_LOGIC;
-    d_waitrequest: IN STD_LOGIC;
-
-    rf_read_reg_1: OUT INTEGER RANGE 0 to 31;
-    rf_read_reg_2: OUT INTEGER RANGE 0 to 31;
-    rf_write_reg: OUT INTEGER RANGE 0 to 31;
-    rf_write_data: OUT STD_LOGIC_VECTOR (31 DOWNTO 0);
-    id_rf_out_A: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    id_rf_out_B: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    rf_write_enable: OUT STD_LOGIC
+    d_waitrequest: IN STD_LOGIC
 );
 END cpu;
 
@@ -72,8 +64,13 @@ signal id_imm_src: IMM_SRC_TYPE_t;
 signal id_imm_in: std_logic_vector(24 downto 0);
 signal id_imm_out: std_logic_vector(31 downto 0);
 
--- signal id_rf_out_A: std_logic_vector(31 downto 0);
--- signal id_rf_out_B: std_logic_vector(31 downto 0);
+signal id_rf_out_A: std_logic_vector(31 downto 0);
+signal id_rf_out_B: std_logic_vector(31 downto 0);
+signal rf_read_reg_1: INTEGER RANGE 0 to 31;
+signal rf_read_reg_2: INTEGER RANGE 0 to 31;
+signal rf_write_reg: INTEGER RANGE 0 to 31;
+signal rf_write_data: STD_LOGIC_VECTOR(31 DOWNTO 0);
+signal rf_write_enable: STD_LOGIC;
 signal id_ALU_Control: ALU_CONTROL_TYPE_t;
 
 
@@ -260,20 +257,18 @@ Imm_extension_inst: entity work.Imm_extension_decode
 rf_read_reg_1 <= to_integer(unsigned(id_addr_regA));
 rf_read_reg_2 <= to_integer(unsigned(id_addr_regB));
 rf_write_reg <= to_integer(unsigned(mem_wb_buffer.dst_reg_addr));
--- rf_reg_out_1 <= id_rf_out_A;
--- rf_reg_out_2 <= id_rf_out_B;
 
--- Register_file_decode: entity work.Register_file_decode
---  port map(
---     clock => clock,
---     read_reg_1 => read_reg_1_int,
---     read_reg_2 => read_reg_2_int,
---     write_reg => write_reg_int,
---     write_data => rf_write_data,
---     write_enable => rf_write_enable,
---     reg_out_1 => id_rf_out_A,
---     reg_out_2 => id_rf_out_B
--- );
+Register_file_decode: entity work.Register_file_decode
+ port map(
+    clock => clock,
+    read_reg_1 => rf_read_reg_1,
+    read_reg_2 => rf_read_reg_2,
+    write_reg => rf_write_reg,
+    write_data => rf_write_data,
+    write_enable => rf_write_enable,
+    reg_out_1 => id_rf_out_A,
+    reg_out_2 => id_rf_out_B
+);
 
 inst_decode: process(clock)
 begin
