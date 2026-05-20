@@ -77,13 +77,13 @@ begin
                 ALU_op           <= ALUOP_ADD;           -- effective address = rs1 + offset
 
             when OP_BRANCH =>
-                -- BRANCH (beq, bne, blt, bge): ALU computes PC+imm (target),
-                -- branch_logic independently compares rs1/rs2 using funct3
+                -- ALU compares rs1 vs rs2 (SUB/SLT/SLTU based on funct3).
+                -- branch_logic reads the ALU result and computes PC+imm as target.
                 dst_reg_write_en <= DISABLE;
-                ALU_src_regA     <= EXECUTE_SRC_PC;     -- PC (for target = PC + offset)
-                ALU_src_regB     <= EXECUTE_SRC_IMM;    -- branch offset
+                ALU_src_regA     <= EXECUTE_SRC_REG_A;  -- rs1
+                ALU_src_regB     <= EXECUTE_SRC_REG_B;  -- rs2
                 Imm_src          <= IMM_B_TYPE;
-                ALU_op           <= ALUOP_ADD;
+                ALU_op           <= ALUOP_BRANCH;
                 is_branch        <= ENABLE;
 
             when OP_JAL =>

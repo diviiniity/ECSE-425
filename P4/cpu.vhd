@@ -118,14 +118,14 @@ signal ex_ALU_i_b: std_logic_vector(31 downto 0);
 signal ex_result: std_logic_vector(31 downto 0);
 signal ex_zero : STD_LOGIC := '0';
 signal ex_branch_taken: std_logic := '0';
+signal ex_branch_target: std_logic_vector(31 downto 0) := (others => '0');
 
 
 --memory signals for execute to memory buffer
 type ex_mem_buffer_t is record
     alu_result: std_logic_vector(31 downto 0);
     branch_taken: std_logic;
-    -- -- probably unnecessary to carry full instruction here
-    -- inst: std_logic_vector(31 downto 0);
+    branch_target: std_logic_vector(31 downto 0);
     inst_pc: INTEGER RANGE 0 to ram_size-1;
     dst_reg_addr: std_logic_vector(4 downto 0);
     rf_out_B: std_logic_vector(31 downto 0);
@@ -133,17 +133,20 @@ type ex_mem_buffer_t is record
     RAM_write: std_logic;
     RAM_read: std_logic;
     wb_data_sel: WRITE_BACK_SRC_TYPE_t;
+    funct3: std_logic_vector(2 downto 0);
 end record;
 
 signal ex_mem_buffer: ex_mem_buffer_t := (
     alu_result => (others => '0'),
     branch_taken => '0',
+    branch_target => (others => '0'),
     dst_reg_addr => (others => '0'),
     rf_out_B => (others => '0'),
     dst_reg_write_en => '0',
     RAM_write => '0',
     RAM_read => '0',
     wb_data_sel => WB_ALU_RESULT,
+    funct3 => (others => '0'),
     inst_pc => 0
 );
 
@@ -158,6 +161,7 @@ type mem_wb_buffer_t is record
     dst_reg_write_en: std_logic;
     wb_data_sel: WRITE_BACK_SRC_TYPE_t;
     inst_pc: INTEGER RANGE 0 to ram_size-1;
+    funct3: std_logic_vector(2 downto 0);
 end record;
 
 signal mem_wb_buffer: mem_wb_buffer_t := (
@@ -166,9 +170,12 @@ signal mem_wb_buffer: mem_wb_buffer_t := (
     dst_reg_addr => (others => '0'),
     dst_reg_write_en => '0',
     wb_data_sel => WB_ALU_RESULT,
+    funct3 => (others => '0'),
     inst_pc => 0
 );
 signal wb_data: std_logic_vector(31 downto 0);
+signal wb_mem_data: std_logic_vector(31 downto 0);
+signal mem_misaligned: std_logic;
 BEGIN
 --connected to instruction memory
 i_addr <= if_pc;
@@ -206,7 +213,7 @@ begin
     if rising_edge(clock) then
         if ex_mem_buffer.branch_taken = '1' then
             -- Branch/jump taken: redirect PC and flush IF/ID with NOP.
-            if_pc <= to_integer(unsigned(ex_mem_buffer.alu_result));
+            if_pc <= to_integer(unsigned(ex_mem_buffer.branch_target));
             if_id_buffer.inst     <= STALL_INST;
             if_id_buffer.inst_pc  <= if_pc;
         elsif id_stall = '1' then
@@ -338,13 +345,15 @@ ALU: entity work.alu_execute(Behavioral)
 -- execute branch logic
 execute_branch_logic: entity work.branch_logic(Behavioral)
     port map(
-    i_operand_a => id_ex_buffer.rf_out_a,
-    i_operand_b => id_ex_buffer.rf_out_b,
-    i_zero => ex_zero,
-    i_funct3 => id_ex_buffer.funct3,
-    i_is_jump => id_ex_buffer.is_jump,
-    i_is_branch => id_ex_buffer.is_branch,
-    o_branch_taken => ex_branch_taken
+        i_alu_result    => ex_result,
+        i_zero          => ex_zero,
+        i_funct3        => id_ex_buffer.funct3,
+        i_is_jump       => id_ex_buffer.is_jump,
+        i_is_branch     => id_ex_buffer.is_branch,
+        i_inst_pc       => std_logic_vector(to_unsigned(id_ex_buffer.inst_pc, 32)),
+        i_imm           => id_ex_buffer.imm_out,
+        o_branch_taken  => ex_branch_taken,
+        o_branch_target => ex_branch_target
     );
 
 inst_execute: process(clock)
@@ -352,26 +361,30 @@ begin
     if rising_edge(clock) then
         if ex_mem_buffer.branch_taken = '1' then
             -- Flush EX/MEM
-            ex_mem_buffer.branch_taken <= '0';
+            ex_mem_buffer.branch_taken     <= '0';
+            ex_mem_buffer.branch_target    <= (others => '0');
             ex_mem_buffer.dst_reg_write_en <= '0';
-            ex_mem_buffer.RAM_write <= '0';
-            ex_mem_buffer.RAM_read <= '0';
-            ex_mem_buffer.dst_reg_addr <= (others => '0');
-            ex_mem_buffer.alu_result <= (others => '0');
-            ex_mem_buffer.rf_out_B <= (others => '0');
-            ex_mem_buffer.wb_data_sel <= WB_ALU_RESULT;
-            ex_mem_buffer.inst_pc <= 0;
+            ex_mem_buffer.RAM_write        <= '0';
+            ex_mem_buffer.RAM_read         <= '0';
+            ex_mem_buffer.dst_reg_addr     <= (others => '0');
+            ex_mem_buffer.alu_result       <= (others => '0');
+            ex_mem_buffer.rf_out_B         <= (others => '0');
+            ex_mem_buffer.wb_data_sel      <= WB_ALU_RESULT;
+            ex_mem_buffer.funct3           <= (others => '0');
+            ex_mem_buffer.inst_pc          <= 0;
         else
             -- Normal execute
-            ex_mem_buffer.branch_taken <= ex_branch_taken;
-            ex_mem_buffer.alu_result <= ex_result;
-            ex_mem_buffer.rf_out_B <= id_ex_buffer.rf_out_b;
-            ex_mem_buffer.dst_reg_addr <= id_ex_buffer.dst_reg_addr;
+            ex_mem_buffer.branch_taken     <= ex_branch_taken;
+            ex_mem_buffer.branch_target    <= ex_branch_target;
+            ex_mem_buffer.alu_result       <= ex_result;
+            ex_mem_buffer.rf_out_B         <= id_ex_buffer.rf_out_b;
+            ex_mem_buffer.dst_reg_addr     <= id_ex_buffer.dst_reg_addr;
             ex_mem_buffer.dst_reg_write_en <= id_ex_buffer.dst_reg_write_en;
-            ex_mem_buffer.RAM_write <= id_ex_buffer.RAM_write;
-            ex_mem_buffer.RAM_read <= id_ex_buffer.RAM_read;
-            ex_mem_buffer.wb_data_sel <= id_ex_buffer.wb_data_sel;
-            ex_mem_buffer.inst_pc <= id_ex_buffer.inst_pc;
+            ex_mem_buffer.RAM_write        <= id_ex_buffer.RAM_write;
+            ex_mem_buffer.RAM_read         <= id_ex_buffer.RAM_read;
+            ex_mem_buffer.wb_data_sel      <= id_ex_buffer.wb_data_sel;
+            ex_mem_buffer.funct3           <= id_ex_buffer.funct3;
+            ex_mem_buffer.inst_pc          <= id_ex_buffer.inst_pc;
         end if;
     end if;
 end process;
@@ -380,34 +393,93 @@ end process;
 --memory comb logic
 --connection to data memory(LOGIC FOR WAIT REQUEST NOT IMPLEMENTED YET)
 --ouputs to memory
-d_writedata <= ex_mem_buffer.rf_out_B;
+with ex_mem_buffer.funct3 select
+    d_writedata <= ex_mem_buffer.rf_out_B                           when F3_LS_WORD,
+                   x"0000"   & ex_mem_buffer.rf_out_B(15 downto 0) when F3_LS_HALF,
+                   x"000000" & ex_mem_buffer.rf_out_B(7 downto 0)  when others;
 d_addr <= to_integer(unsigned(ex_mem_buffer.alu_result))
           when (ex_mem_buffer.RAM_write = '1' or ex_mem_buffer.RAM_read = '1')
           else 0;
-d_memwrite <= ex_mem_buffer.RAM_write;
-d_memread <= ex_mem_buffer.RAM_read;
+-- Misalignment: half must be 2-byte aligned (bit 0 = 0), word must be 4-byte aligned (bits 1:0 = 00)
+mem_misaligned <=
+    '1' when (ex_mem_buffer.RAM_read = '1' or ex_mem_buffer.RAM_write = '1') and
+             ((ex_mem_buffer.funct3 = F3_LS_HALF   or ex_mem_buffer.funct3 = F3_LS_HALF_U) and
+               ex_mem_buffer.alu_result(0) = '1')
+    else
+    '1' when (ex_mem_buffer.RAM_read = '1' or ex_mem_buffer.RAM_write = '1') and
+              ex_mem_buffer.funct3 = F3_LS_WORD and
+              ex_mem_buffer.alu_result(1 downto 0) /= "00"
+    else '0';
+
+d_memwrite <= ex_mem_buffer.RAM_write and not mem_misaligned;
+d_memread  <= ex_mem_buffer.RAM_read  and not mem_misaligned;
 --inputs from memory
 mem_readdata <= d_readdata;
 
 inst_memory: process(clock)
 begin
     if rising_edge(clock) then
-        mem_wb_buffer.RAM_readdata <= d_readdata;
-        mem_wb_buffer.alu_result <= ex_mem_buffer.alu_result;
-        mem_wb_buffer.dst_reg_addr <= ex_mem_buffer.dst_reg_addr;
-        mem_wb_buffer.dst_reg_write_en <= ex_mem_buffer.dst_reg_write_en;
-        mem_wb_buffer.wb_data_sel <= ex_mem_buffer.wb_data_sel;
-        mem_wb_buffer.inst_pc <= ex_mem_buffer.inst_pc;
+        mem_wb_buffer.RAM_readdata     <= d_readdata;
+        mem_wb_buffer.alu_result       <= ex_mem_buffer.alu_result;
+        mem_wb_buffer.dst_reg_addr     <= ex_mem_buffer.dst_reg_addr;
+        mem_wb_buffer.dst_reg_write_en <= ex_mem_buffer.dst_reg_write_en and not mem_misaligned;
+        mem_wb_buffer.wb_data_sel      <= ex_mem_buffer.wb_data_sel;
+        mem_wb_buffer.funct3           <= ex_mem_buffer.funct3;
+        mem_wb_buffer.inst_pc          <= ex_mem_buffer.inst_pc;
     end if;
 end process;
 --comb logic for write back
 rf_write_enable <= mem_wb_buffer.dst_reg_write_en;
---logic to determin what to write to register file
+
+-- Byte/half extraction for loads (uses alu_result[1:0] as byte offset within word)
+load_extract: process(mem_wb_buffer)
+    variable byte_v : std_logic_vector(7 downto 0);
+    variable half_v : std_logic_vector(15 downto 0);
+    variable offset : std_logic_vector(1 downto 0);
+begin
+    offset := mem_wb_buffer.alu_result(1 downto 0);
+    case mem_wb_buffer.funct3 is
+        when F3_LS_BYTE =>
+            case offset is
+                when "00"   => byte_v := mem_wb_buffer.RAM_readdata(7  downto 0);
+                when "01"   => byte_v := mem_wb_buffer.RAM_readdata(15 downto 8);
+                when "10"   => byte_v := mem_wb_buffer.RAM_readdata(23 downto 16);
+                when others => byte_v := mem_wb_buffer.RAM_readdata(31 downto 24);
+            end case;
+            wb_mem_data <= std_logic_vector(resize(signed(byte_v), 32));
+        when F3_LS_HALF =>
+            if offset(1) = '0' then
+                half_v := mem_wb_buffer.RAM_readdata(15 downto 0);
+            else
+                half_v := mem_wb_buffer.RAM_readdata(31 downto 16);
+            end if;
+            wb_mem_data <= std_logic_vector(resize(signed(half_v), 32));
+        when F3_LS_BYTE_U =>
+            case offset is
+                when "00"   => byte_v := mem_wb_buffer.RAM_readdata(7  downto 0);
+                when "01"   => byte_v := mem_wb_buffer.RAM_readdata(15 downto 8);
+                when "10"   => byte_v := mem_wb_buffer.RAM_readdata(23 downto 16);
+                when others => byte_v := mem_wb_buffer.RAM_readdata(31 downto 24);
+            end case;
+            wb_mem_data <= x"000000" & byte_v;
+        when F3_LS_HALF_U =>
+            if offset(1) = '0' then
+                half_v := mem_wb_buffer.RAM_readdata(15 downto 0);
+            else
+                half_v := mem_wb_buffer.RAM_readdata(31 downto 16);
+            end if;
+            wb_mem_data <= x"0000" & half_v;
+        when others => -- F3_LS_WORD and default
+            wb_mem_data <= mem_wb_buffer.RAM_readdata;
+    end case;
+end process load_extract;
+
+--logic to determine what to write to register file
 with mem_wb_buffer.wb_data_sel select
-    rf_write_data <= mem_wb_buffer.alu_result when WB_ALU_RESULT,
-                     mem_wb_buffer.RAM_readdata when WB_MEM_DATA,
-                     std_logic_vector(to_unsigned(mem_wb_buffer.inst_pc + 4, 32)) when WB_PC4,  -- JAL/JALR link
-                     (others => '0') when others;
+    rf_write_data <= mem_wb_buffer.alu_result                                    when WB_ALU_RESULT,
+                     wb_mem_data                                                  when WB_MEM_DATA,
+                     std_logic_vector(to_unsigned(mem_wb_buffer.inst_pc + 4, 32)) when WB_PC4,
+                     (others => '0')                                              when others;
 END ARCHITECTURE rtl;
 
     

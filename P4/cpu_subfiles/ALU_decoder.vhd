@@ -29,33 +29,18 @@ begin
                     ALU_control <= ALU_OP_TYPE_ADD;
                     
                 when ALUOP_BRANCH =>
-                    -- Subtraction for branches (BEQ, BNE)
+                    -- ALU performs the comparison; branch_logic reads the result.
                     case funct3 is
-                        when "000" =>
-                            -- BEQ (Branch if Equal)
-                            ALU_control <= ALU_OP_TYPE_SUB;  -- Use subtraction to check equality
-                        when "001" =>
-                            -- BNE (Branch if Not Equal)
-                            ALU_control <= ALU_OP_TYPE_SUB;  -- Use subtraction to check inequality
-                        when "100"|"101" =>
-                            -- BLT (Branch if Less Than) AND BGE (Branch if Greater or Equal)
-                            ALU_control <= ALU_OP_TYPE_SLT;  -- Set Less Than
-
-                        when "110"|"111" =>
-                            -- BLTU (Branch if Less Than Unsigned)
-                            ALU_control <= ALU_OP_TYPE_SLTU;  -- Set Less Than Unsigned
-                        when others =>
-                            
-                    
+                        when F3_BR_BEQ  | F3_BR_BNE  => ALU_control <= ALU_OP_TYPE_SUB;
+                        when F3_BR_BLT  | F3_BR_BGE  => ALU_control <= ALU_OP_TYPE_SLT;
+                        when F3_BR_BLTU | F3_BR_BGEU => ALU_control <= ALU_OP_TYPE_SLTU;
+                        when others                   => ALU_control <= ALU_OP_TYPE_SUB;
                     end case;
-                    
+
                 when ALUOP_FUNCT =>
                     -- R-type and I-type operations - decode based on funct3
                     case funct3 is
-                        when "000" =>
-                            -- ADD/ADDI, SUB, or MUL
-                            -- For R-type: funct7=0100000 → SUB; funct7=0000001 → MUL; funct7=0000000 → ADD
-                            -- For I-type: Always ADD (ADDI)
+                        when F3_ALU_ADD_SUB =>
                             if (op_bit5 = '1' and funct7_bit5 = '1') then
                                 ALU_control <= ALU_OP_TYPE_SUB;  -- SUB (R-type only)
                             elsif (op_bit5 = '1' and funct7_bit0 = '1') then
@@ -63,42 +48,22 @@ begin
                             else
                                 ALU_control <= ALU_OP_TYPE_ADD;  -- ADD/ADDI
                             end if;
-                            
-                        when "001" =>
-                            -- SLL/SLLI - Shift Left Logical
-                            ALU_control <= ALU_OP_TYPE_SLL;
-                            
-                        when "010" =>
-                            -- SLT/SLTI - Set Less Than (signed)
-                            ALU_control <= ALU_OP_TYPE_SLT;
-                            
-                        when "011" =>
-                            -- SLTU/SLTIU - Set Less Than Unsigned
-                            ALU_control <= ALU_OP_TYPE_SLTU;  -- Same operation, unsigned comparison
-                            
-                        when "100" =>
-                            -- XOR/XORI - Bitwise XOR
-                            ALU_control <= ALU_OP_TYPE_XOR;
-                            
-                        when "101" =>
+
+                        when F3_ALU_SLL  => ALU_control <= ALU_OP_TYPE_SLL;
+                        when F3_ALU_SLT  => ALU_control <= ALU_OP_TYPE_SLT;
+                        when F3_ALU_SLTU => ALU_control <= ALU_OP_TYPE_SLTU;
+                        when F3_ALU_XOR  => ALU_control <= ALU_OP_TYPE_XOR;
+
+                        when F3_ALU_SRL_SRA =>
                             if funct7_bit5 = '0' then
-                                -- SRL/SRLI - Shift Right Logical
                                 ALU_control <= ALU_OP_TYPE_SRL;
                             else
-                                -- SRA/SRAI - Shift Right Arithmetic
                                 ALU_control <= ALU_OP_TYPE_SRA;
                             end if;
-                            
-                        when "110" =>
-                            -- OR/ORI - Bitwise OR
-                            ALU_control <= ALU_OP_TYPE_OR;
-                            
-                        when "111" =>
-                            -- AND/ANDI - Bitwise AND
-                            ALU_control <= ALU_OP_TYPE_AND;
-                            
-                        when others =>
-                            ALU_control <= ALU_OP_TYPE_ADD;  -- Default to ADD
+
+                        when F3_ALU_OR  => ALU_control <= ALU_OP_TYPE_OR;
+                        when F3_ALU_AND => ALU_control <= ALU_OP_TYPE_AND;
+                        when others     => ALU_control <= ALU_OP_TYPE_ADD;
                     end case;
                     
                 when others =>

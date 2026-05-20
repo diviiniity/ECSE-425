@@ -30,7 +30,32 @@ package cpu_package is
 
     constant ENABLE       : std_logic := '1';
     constant DISABLE      : std_logic := '0';
-    
+
+    -- funct3 codes for load/store width
+    constant F3_LS_BYTE   : std_logic_vector(2 downto 0) := "000"; -- lb, sb
+    constant F3_LS_HALF   : std_logic_vector(2 downto 0) := "001"; -- lh, sh
+    constant F3_LS_WORD   : std_logic_vector(2 downto 0) := "010"; -- lw, sw
+    constant F3_LS_BYTE_U : std_logic_vector(2 downto 0) := "100"; -- lbu
+    constant F3_LS_HALF_U : std_logic_vector(2 downto 0) := "101"; -- lhu
+
+    -- funct3 codes for branch conditions
+    constant F3_BR_BEQ  : std_logic_vector(2 downto 0) := "000";
+    constant F3_BR_BNE  : std_logic_vector(2 downto 0) := "001";
+    constant F3_BR_BLT  : std_logic_vector(2 downto 0) := "100";
+    constant F3_BR_BGE  : std_logic_vector(2 downto 0) := "101";
+    constant F3_BR_BLTU : std_logic_vector(2 downto 0) := "110";
+    constant F3_BR_BGEU : std_logic_vector(2 downto 0) := "111";
+
+    -- funct3 codes for ALU operations (R-type and I-type)
+    constant F3_ALU_ADD_SUB : std_logic_vector(2 downto 0) := "000";
+    constant F3_ALU_SLL     : std_logic_vector(2 downto 0) := "001";
+    constant F3_ALU_SLT     : std_logic_vector(2 downto 0) := "010";
+    constant F3_ALU_SLTU    : std_logic_vector(2 downto 0) := "011";
+    constant F3_ALU_XOR     : std_logic_vector(2 downto 0) := "100";
+    constant F3_ALU_SRL_SRA : std_logic_vector(2 downto 0) := "101";
+    constant F3_ALU_OR      : std_logic_vector(2 downto 0) := "110";
+    constant F3_ALU_AND     : std_logic_vector(2 downto 0) := "111";
+
 
 
 
